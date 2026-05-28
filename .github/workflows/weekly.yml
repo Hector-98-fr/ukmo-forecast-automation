@@ -1,29 +1,39 @@
-name: UKMO Forecast (Test Run)
+```yaml
+name: UKMO Forecast Automation
 
 on:
+  workflow_dispatch:
+
   schedule:
-    - cron: "0 15 28 5 *"   # May 28th 15:00 UTC = 17:00 France time
-  workflow_dispatch:        # manual run button (VERY IMPORTANT)
+    - cron: "0 15 * * 1"
 
 jobs:
+
   run-forecast:
+
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
 
-      - name: Run forecast
-        env:
-          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
-          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
-          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
-        run: python forecast.py
+      - name: Run forecast pipeline
+        run: |
+          python forecast.py
+
+      - name: Upload outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: ukmo-forecast-outputs
+          path: outputs/
+```
