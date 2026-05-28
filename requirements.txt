@@ -1,6 +1,10 @@
-pandas
+fsspec
 numpy
-requests
+pandas
 xarray
-netcdf4
+pystac-client
 planetary-computer
+geopandas
+shapely
+netCDF4
+h5netcdf
