@@ -1,9 +1,9 @@
-name: Weekly UKMO Forecast
+name: UKMO Forecast (Test Run)
 
 on:
   schedule:
-    - cron: "0 11 * * 1"
-  workflow_dispatch:
+    - cron: "0 15 28 5 *"   # May 28th 15:00 UTC = 17:00 France time
+  workflow_dispatch:        # manual run button (VERY IMPORTANT)
 
 jobs:
   run-forecast:
@@ -21,5 +21,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run script
+      - name: Run forecast
+        env:
+          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+          EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
         run: python forecast.py
