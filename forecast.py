@@ -429,6 +429,21 @@ def main():
 
     df_precip_total["Total_7day_Precip"] = df_precip_total["Total_7day_Precip"].astype(float)
 
+    # =========================================================
+    # ROUNDING (FINAL FORMATTING STEP)
+    # =========================================================
+
+    # Temperature → 0.1°C
+    df_temp = df_temp.round(1)
+
+    # Wind variables → whole numbers
+    df_ws = df_ws.round(0)
+    df_wind = df_wind.round(0)
+
+    # Precipitation → whole numbers
+    df_precip = df_precip.round(0)
+    df_precip_total = df_precip_total.round(0)
+
     # =====================================================
     # EXPORT CSV FILES
     # =====================================================
