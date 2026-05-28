@@ -415,32 +415,19 @@ def main():
         SHAPEFILE_PATH
     )
 
-    # =====================================================
-    # CREATE PRECIP TOTAL TABLE
-    # =====================================================
+    # =========================================================
+    # WEEKLY TOTAL PRECIPITATION (PER GOVERNORATE)
+    # =========================================================
 
     df_precip_total = (
         df_precip
+        .sum(axis=0)   # sum over time dimension
         .reset_index()
-        .rename(
-            columns={
-                df_precip.reset_index().columns[0]: "Date"
-            }
-        )
-        .melt(
-            id_vars="Date",
-            var_name="District",
-            value_name="Precipitation"
-        )
     )
 
-    df_precip_total = df_precip_total[
-        ["Date", "Precipitation", "District"]
-    ]
+    df_precip_total.columns = ["District", "Total_7day_Precip"]
 
-    df_precip_total["Date"] = pd.to_datetime(
-        df_precip_total["Date"]
-    )
+    df_precip_total["Total_7day_Precip"] = df_precip_total["Total_7day_Precip"].astype(float)
 
     # =====================================================
     # EXPORT CSV FILES
