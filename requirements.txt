@@ -1,4 +1,6 @@
 fsspec
+requests
+aiohttp
 numpy
 pandas
 xarray
