@@ -1,0 +1,6 @@
+pandas
+numpy
+requests
+xarray
+netcdf4
+planetary-computer
