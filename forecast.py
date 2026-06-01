@@ -176,7 +176,7 @@ def process_forecast(datasets):
 
     daily_ws = ds_all["wind_speed"].resample(
         time="1D"
-    ).max()
+    ).mean()
 
     daily_wind = ds_all["wind_speed_of_gust"].resample(
         time="1D"
