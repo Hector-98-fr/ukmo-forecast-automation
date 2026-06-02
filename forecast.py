@@ -102,6 +102,8 @@ def load_ukmo_data():
 
 def process_forecast(datasets):
 
+    print(len(datasets))
+    
     print("Processing forecast variables...")
 
     temp_ds = [
