@@ -392,40 +392,28 @@ def main():
     # Create dated output folder
     run_date = datetime.utcnow().strftime("%Y-%m-%d")
 
-    output_dir = os.path.join(
-        "outputs",
-        run_date
-    )
-
+    output_dir = os.path.join("outputs", run_date)
     os.makedirs(output_dir, exist_ok=True)
 
     print("Output directory:", output_dir)
 
     # Load and process forecast
     datasets = load_ukmo_data()
-
     daily_ds = process_forecast(datasets)
 
     # Governorate aggregation
-    (
-        df_temp,
-        df_ws,
-        df_wind,
-        df_precip
-    ) = calculate_governorate_tables(
+    df_temp, df_ws, df_wind, df_precip = calculate_governorate_tables(
         daily_ds,
         SHAPEFILE_PATH
     )
 
-        # =========================================================
+    # =========================================================
     # WEEKLY TOTAL PRECIPITATION (PER GOVERNORATE)
     # =========================================================
 
-    df_precip_total = (
-        df_precip
-        .sum(axis=0)
-        .reset_index()
-    )
+    df_precip_total = df_precip.sum(axis=0).to_frame("Total_7day_Precip")
+    df_precip_total = df_precip_total.reset_index()
+    df_precip_total.columns = ["District", "Total_7day_Precip"]
 
     # =========================================================
     # ROUNDING
@@ -446,82 +434,36 @@ def main():
     )
 
     # =========================================================
-    # CONVERT TO LONG FORMAT
+    # EXPORT CSV FILES (WIDE FORMAT)
     # =========================================================
-
-    def convert_to_long_format(df, value_name):
-
-        df_long = df.reset_index()
-
-        # First column is the date
-        df_long.columns = ["Date"] + list(df_long.columns[1:])
-
-        df_long = df_long.melt(
-            id_vars="Date",
-            var_name="District",
-            value_name=value_name
-        )
-
-        # Format dates as 2-Jun, 3-Jun, etc.
-        df_long["Date"] = pd.to_datetime(
-            df_long["Date"]
-        ).dt.strftime("%-d-%b")
-
-        return df_long
-
-    df_temp_long = convert_to_long_format(
-        df_temp,
-        "Temperature"
-    )
-
-    df_ws_long = convert_to_long_format(
-        df_ws,
-        "WindSpeed"
-    )
-
-    df_wind_long = convert_to_long_format(
-        df_wind,
-        "Wind"
-    )
-
-    df_precip_long = convert_to_long_format(
-        df_precip,
-        "Precipitation"
-    )
-
-    # =====================================================
-    # EXPORT CSV FILES
-    # =====================================================
 
     print("Exporting CSV files...")
 
-    df_temp_long.to_csv(
+    df_temp.to_csv(
         os.path.join(output_dir, "df_temp.csv"),
-        index=False
+        index=True
     )
 
-    df_ws_long.to_csv(
+    df_ws.to_csv(
         os.path.join(output_dir, "df_ws.csv"),
-        index=False
+        index=True
     )
 
-    df_wind_long.to_csv(
+    df_wind.to_csv(
         os.path.join(output_dir, "df_wind.csv"),
-        index=False
+        index=True
     )
 
-    df_precip_long.to_csv(
+    df_precip.to_csv(
         os.path.join(output_dir, "df_precip.csv"),
-        index=False
+        index=True
     )
 
     df_precip_total.to_csv(
-        os.path.join(
-            output_dir,
-            "df_precip_total.csv"
-        ),
+        os.path.join(output_dir, "df_precip_total.csv"),
         index=False
     )
 
     print("All CSV files exported successfully.")
+    print("Pipeline completed successfully.")V files exported successfully.")
     print("Pipeline completed successfully.")
