@@ -25,15 +25,6 @@ jobs:
       - name: Run forecast
         run: python forecast.py
 
-      - name: Inspect filesystem
-        run: |
-          echo "Current directory:"
-          pwd
-
-          echo ""
-          echo "Repository contents:"
-          ls -R
-
       - name: Upload outputs
         uses: actions/upload-artifact@v4
         with:
