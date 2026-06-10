@@ -417,34 +417,82 @@ def main():
         SHAPEFILE_PATH
     )
 
-    # =========================================================
+        # =========================================================
     # WEEKLY TOTAL PRECIPITATION (PER GOVERNORATE)
     # =========================================================
 
     df_precip_total = (
         df_precip
-        .sum(axis=0)   # sum over time dimension
+        .sum(axis=0)
         .reset_index()
     )
 
-    df_precip_total.columns = ["District", "Total_7day_Precip"]
-
-    df_precip_total["Total_7day_Precip"] = df_precip_total["Total_7day_Precip"].astype(float)
+    df_precip_total.columns = [
+        "District",
+        "Total_7day_Precip"
+    ]
 
     # =========================================================
-    # ROUNDING (FINAL FORMATTING STEP)
+    # ROUNDING
     # =========================================================
 
-    # Temperature → 0.1°C
     df_temp = df_temp.round(1)
 
-    # Wind variables → whole numbers
-    df_ws = df_ws.round(0)
-    df_wind = df_wind.round(0)
+    df_ws = df_ws.round(0).astype(int)
 
-    # Precipitation → whole numbers
-    df_precip = df_precip.round(0)
-    df_precip_total = df_precip_total.round(0)
+    df_wind = df_wind.round(0).astype(int)
+
+    df_precip = df_precip.round(0).astype(int)
+
+    df_precip_total["Total_7day_Precip"] = (
+        df_precip_total["Total_7day_Precip"]
+        .round(0)
+        .astype(int)
+    )
+
+    # =========================================================
+    # CONVERT TO LONG FORMAT
+    # =========================================================
+
+    def convert_to_long_format(df, value_name):
+
+        df_long = df.reset_index()
+
+        # First column is the date
+        df_long.columns = ["Date"] + list(df_long.columns[1:])
+
+        df_long = df_long.melt(
+            id_vars="Date",
+            var_name="District",
+            value_name=value_name
+        )
+
+        # Format dates as 2-Jun, 3-Jun, etc.
+        df_long["Date"] = pd.to_datetime(
+            df_long["Date"]
+        ).dt.strftime("%-d-%b")
+
+        return df_long
+
+    df_temp_long = convert_to_long_format(
+        df_temp,
+        "Temperature"
+    )
+
+    df_ws_long = convert_to_long_format(
+        df_ws,
+        "WindSpeed"
+    )
+
+    df_wind_long = convert_to_long_format(
+        df_wind,
+        "Wind"
+    )
+
+    df_precip_long = convert_to_long_format(
+        df_precip,
+        "Precipitation"
+    )
 
     # =====================================================
     # EXPORT CSV FILES
@@ -452,20 +500,24 @@ def main():
 
     print("Exporting CSV files...")
 
-    df_temp.to_csv(
-        os.path.join(output_dir, "df_temp.csv")
+    df_temp_long.to_csv(
+        os.path.join(output_dir, "df_temp.csv"),
+        index=False
     )
 
-    df_ws.to_csv(
-        os.path.join(output_dir, "df_ws.csv")
+    df_ws_long.to_csv(
+        os.path.join(output_dir, "df_ws.csv"),
+        index=False
     )
 
-    df_wind.to_csv(
-        os.path.join(output_dir, "df_wind.csv")
+    df_wind_long.to_csv(
+        os.path.join(output_dir, "df_wind.csv"),
+        index=False
     )
 
-    df_precip.to_csv(
-        os.path.join(output_dir, "df_precip.csv")
+    df_precip_long.to_csv(
+        os.path.join(output_dir, "df_precip.csv"),
+        index=False
     )
 
     df_precip_total.to_csv(
@@ -478,7 +530,3 @@ def main():
 
     print("All CSV files exported successfully.")
     print("Pipeline completed successfully.")
-
-
-if __name__ == "__main__":
-    main()
