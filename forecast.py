@@ -421,16 +421,9 @@ def main():
     # WEEKLY TOTAL PRECIPITATION (PER GOVERNORATE)
     # =========================================================
 
-    df_precip_total = (
-        df_precip
-        .sum(axis=0)
-        .reset_index()
-    )
-
-    df_precip_total.columns = [
-        "District",
-        "Total_7day_Precip"
-    ]
+    df_precip_total = df_precip.sum(axis=0).to_frame(name="Total_7day_Precip")
+    df_precip_total = df_precip_total.reset_index()
+    df_precip_total.columns = ["District", "Total_7day_Precip"]
 
     # =========================================================
     # ROUNDING
