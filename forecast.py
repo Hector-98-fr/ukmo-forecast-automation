@@ -465,5 +465,4 @@ def main():
     )
 
     print("All CSV files exported successfully.")
-    print("Pipeline completed successfully.")V files exported successfully.")
     print("Pipeline completed successfully.")
