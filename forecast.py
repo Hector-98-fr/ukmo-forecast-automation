@@ -424,7 +424,12 @@ def main():
     df_precip_total = (
         df_precip
         .sum(axis=0)
+        .to_frame(name="Total_7day_Precip")
         .reset_index()
+    )
+
+    df_precip_total = df_precip_total.rename(
+        columns={"index": "District"}
     )
 
     # =========================================================
