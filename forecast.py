@@ -466,3 +466,6 @@ def main():
 
     print("All CSV files exported successfully.")
     print("Pipeline completed successfully.")
+
+if __name__ == "__main__":
+    main()
