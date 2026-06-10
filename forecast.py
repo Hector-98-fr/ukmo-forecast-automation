@@ -442,11 +442,11 @@ def main():
 
     df_wind = df_wind.round(0).astype(int)
 
-    df_precip = df_precip.round(0).astype(int)
+    df_precip = df_precip.round(1).astype(int)
 
     df_precip_total["Total_7day_Precip"] = (
         df_precip_total["Total_7day_Precip"]
-        .round(0)
+        .round(1)
         .astype(int)
     )
 
