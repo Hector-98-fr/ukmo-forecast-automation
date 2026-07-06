@@ -34,7 +34,7 @@ def load_ukmo_data():
 
     search = catalog.search(
         collections=collections,
-        max_items=100
+        max_items=1000
     )
 
     items = list(search.items())
@@ -43,6 +43,8 @@ def load_ukmo_data():
         item.properties["forecast:reference_datetime"]
         for item in items
     ])
+
+    print(ref_times[-20:])
 
     latest_00z = [
         t for t in ref_times
