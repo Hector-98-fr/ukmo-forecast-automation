@@ -39,6 +39,12 @@ def load_ukmo_data():
 
     items = list(search.items())
 
+    print(items[-1].datetime)
+    print(items[-1].properties["forecast:reference_datetime"])
+
+    for item in items[-10:]:
+    print(item.id)
+
     ref_times = sorted([
         item.properties["forecast:reference_datetime"]
         for item in items
