@@ -21,52 +21,36 @@ SHAPEFILE_PATH = "data/Gaza_adm2.shp"
 # LOAD UKMO FORECAST DATA
 # =========================================================
 
+import s3fs
+import xarray as xr
+from datetime import datetime, timedelta, timezone
+
+BASE = "met-office-atmospheric-model-data/global-deterministic-10km"
+
+def find_latest_reference_time(fs, base, max_lookback_hours=240):
+    now = datetime.now(timezone.utc)
+    hour = (now.hour // 6) * 6
+    candidate = now.replace(hour=hour, minute=0, second=0, microsecond=0)
+
+    for _ in range(max_lookback_hours // 6):
+        folder = candidate.strftime("%Y%m%dT%H00Z")
+        path = f"{base}/{folder}"
+        if fs.exists(path):
+            return path, candidate
+        candidate -= timedelta(hours=6)
+
+    raise RuntimeError("No forecast folder found in lookback window")
+
+
 def load_ukmo_data():
 
-    print("Connecting to Microsoft Planetary Computer...")
+    print("Connecting to Met Office AWS Open Data bucket...")
 
-    catalog = Client.open(
-        "https://planetarycomputer.microsoft.com/api/stac/v1",
-        modifier=planetary_computer.sign_inplace,
-    )
+    fs = s3fs.S3FileSystem(anon=True)
 
-    collections = ["met-office-global-deterministic-near-surface"]
+    latest_path, latest_ref_time = find_latest_reference_time(fs, BASE)
 
-    search = catalog.search(
-        collections=collections,
-        max_items=1000
-    )
-
-    items = list(search.items())
-
-    ref_times = sorted([
-        item.properties["forecast:reference_datetime"]
-        for item in items
-    ])
-
-
-    latest_00z = [
-        t for t in ref_times
-        if "T00:00:00Z" in t
-    ][-1]
-
-    print("Latest 00Z forecast:", latest_00z)
-
-    forecast_filter = {
-        "op": "=",
-        "args": [
-            {"property": "forecast:reference_datetime"},
-            latest_00z,
-        ],
-    }
-
-    search = catalog.search(
-        collections=collections,
-        filter_lang="cql2-json",
-        filter=forecast_filter
-    )
-
-    items = list(search.items())
+    print("Latest reference time:", latest_ref_time)
 
     assets_needed = [
         "temperature_at_screen_level",
@@ -79,23 +63,20 @@ def load_ukmo_data():
 
     print("Downloading forecast variables...")
 
-    for item in items:
-        for asset_name in assets_needed:
+    for asset_name in assets_needed:
 
-            if asset_name in item.assets:
+        files = sorted(fs.glob(f"{latest_path}/*-{asset_name}.nc"))
 
-                url = item.assets[asset_name].href
+        print(f"  {asset_name}: {len(files)} horizon files")
 
-                ds = xr.open_dataset(
-                    fsspec.open(url).open()
-                )
-
+        for f in files:
+            with fs.open(f) as fobj:
+                ds = xr.open_dataset(fobj)
                 datasets.append(ds)
 
     print("Download complete.")
 
     return datasets
-
 
 # =========================================================
 # PROCESS FORECAST
