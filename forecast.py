@@ -67,11 +67,10 @@ def load_ukmo_data():
 
         files = sorted(fs.glob(f"{latest_path}/*-{asset_name}.nc"))
 
-        print(f"  {asset_name}: {len(files)} horizon files")
-
         for f in files:
             with fs.open(f) as fobj:
                 ds = xr.open_dataset(fobj)
+                ds.load()  # <-- force read into memory before the S3 handle closes
                 datasets.append(ds)
 
     print("Download complete.")
