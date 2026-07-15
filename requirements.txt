@@ -11,3 +11,5 @@ shapely
 netCDF4
 h5netcdf
 h5py
+s3fs
+datetime
