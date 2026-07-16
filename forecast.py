@@ -56,7 +56,9 @@ def load_ukmo_data():
         "temperature_at_screen_level",
         "wind_speed_at_10m",
         "wind_gust_at_10m",
-        "precipitation_rate"
+        "precipitation_accumulation-PT01H",
+        "precipitation_accumulation-PT03H",
+        "precipitation_accumulation-PT06H",
     ]
 
     datasets = []
@@ -67,16 +69,18 @@ def load_ukmo_data():
 
         files = sorted(fs.glob(f"{latest_path}/*-{asset_name}.nc"))
 
+        print(f"  {asset_name}: {len(files)} horizon files")
+
         for f in files:
             with fs.open(f) as fobj:
                 ds = xr.open_dataset(fobj)
-                ds.load()  # <-- force read into memory before the S3 handle closes
+                ds.load()
+                ds.attrs["source_asset"] = asset_name  # tag, so we can filter reliably below
                 datasets.append(ds)
 
     print("Download complete.")
 
     return datasets
-
 # =========================================================
 # PROCESS FORECAST
 # =========================================================
@@ -84,44 +88,43 @@ def load_ukmo_data():
 def process_forecast(datasets):
 
     print(len(datasets))
-    
+
     print("Processing forecast variables...")
 
+    def clip(ds):
+        return ds.sel(latitude=slice(30, 33), longitude=slice(33, 36))
+
     temp_ds = [
-        ds[['air_temperature']].sel(
-            latitude=slice(30, 33),
-            longitude=slice(33, 36)
-        )
+        clip(ds[['air_temperature']])
         for ds in datasets
         if 'air_temperature' in ds.data_vars
     ]
 
     ws_ds = [
-        ds[['wind_speed']].sel(
-            latitude=slice(30, 33),
-            longitude=slice(33, 36)
-        )
+        clip(ds[['wind_speed']])
         for ds in datasets
         if 'wind_speed' in ds.data_vars
     ]
 
     wind_ds = [
-        ds[['wind_speed_of_gust']].sel(
-            latitude=slice(30, 33),
-            longitude=slice(33, 36)
-        )
+        clip(ds[['wind_speed_of_gust']])
         for ds in datasets
         if 'wind_speed_of_gust' in ds.data_vars
     ]
 
-    precip_ds = [
-        ds[['lwe_precipitation_rate']].sel(
-            latitude=slice(30, 33),
-            longitude=slice(33, 36)
-        )
-        for ds in datasets
-        if 'lwe_precipitation_rate' in ds.data_vars
-    ]
+    precip_asset_names = {
+        "precipitation_accumulation-PT01H",
+        "precipitation_accumulation-PT03H",
+        "precipitation_accumulation-PT06H",
+    }
+
+    precip_ds = []
+    for ds in datasets:
+        if ds.attrs.get("source_asset") in precip_asset_names:
+            var_name = list(ds.data_vars)[0]  # each file has exactly one data variable
+            precip_ds.append(
+                clip(ds[[var_name]]).rename({var_name: "precip_accumulation"})
+            )
 
     temp_all = xr.concat(temp_ds, dim="time")
     ws_all = xr.concat(ws_ds, dim="time")
@@ -134,56 +137,30 @@ def process_forecast(datasets):
     )
 
     # Unit conversions
-    ds_all['air_temperature'] = (
-        ds_all['air_temperature'] - 273.15
-    )
+    ds_all['air_temperature'] = ds_all['air_temperature'] - 273.15
+    ds_all['wind_speed'] = ds_all['wind_speed'] * 3.6
+    ds_all['wind_speed_of_gust'] = ds_all['wind_speed_of_gust'] * 3.6
 
-    ds_all['wind_speed'] = (
-        ds_all['wind_speed'] * 3.6
-    )
-
-    ds_all['wind_speed_of_gust'] = (
-        ds_all['wind_speed_of_gust'] * 3.6
-    )
-
-    ds_all['lwe_precipitation_rate'] = (
-        ds_all['lwe_precipitation_rate'] * 86400 * 1000
-    )
+    # precip_accumulation is already a true depth (m) accumulated over its own
+    # window (1h/3h/6h) -- just convert units, no rate*time multiplication needed
+    ds_all['precip_accumulation'] = ds_all['precip_accumulation'] * 1000  # m -> mm
 
     ds_all = ds_all.sortby("time")
 
-    # Daily aggregation
-    daily_temp = ds_all["air_temperature"].resample(
-        time="1D"
-    ).max()
+    daily_temp = ds_all["air_temperature"].resample(time="1D").max()
+    daily_ws = ds_all["wind_speed"].resample(time="1D").mean()
+    daily_wind = ds_all["wind_speed_of_gust"].resample(time="1D").max()
 
-    daily_ws = ds_all["wind_speed"].resample(
-        time="1D"
-    ).mean()
+    # windows tile each day exactly (24x1h, 8x3h, or 4x6h, contiguous, no overlap),
+    # so summing gives the true daily total now
+    daily_precip = ds_all["precip_accumulation"].resample(time="1D").sum()
 
-    daily_wind = ds_all["wind_speed_of_gust"].resample(
-        time="1D"
-    ).max()
-
-    daily_precip = ds_all["lwe_precipitation_rate"].resample(
-        time="1D"
-    ).sum()
-
-    daily_ds = xr.merge([
-        daily_temp,
-        daily_ws,
-        daily_wind,
-        daily_precip
-    ])
-
-    # Keep first 7 days
+    daily_ds = xr.merge([daily_temp, daily_ws, daily_wind, daily_precip])
     daily_ds = daily_ds.isel(time=slice(0, 7))
 
     print("Forecast processing complete.")
 
     return daily_ds
-
-
 # =========================================================
 # GOVERNORATE WEIGHTED TABLES
 # =========================================================
@@ -289,7 +266,7 @@ def calculate_governorate_tables(
     temp = ds["air_temperature"].values
     ws = ds["wind_speed"].values
     wind = ds["wind_speed_of_gust"].values
-    precip = ds["lwe_precipitation_rate"].values
+    precip = ds["precip_accumulation"].values
     times = ds.time.values
 
     gov_names = list(gov_fractions.keys())
