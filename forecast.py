@@ -469,7 +469,7 @@ def main():
     )
 
     df_wind_long.to_csv(
-        os.path.join(output_dir, "df_wind_gust.csv"),
+        os.path.join(output_dir, "df_wind.csv"),
         index=False
     )
 
