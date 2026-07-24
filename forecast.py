@@ -27,19 +27,18 @@ from datetime import datetime, timedelta, timezone
 
 BASE = "met-office-atmospheric-model-data/global-deterministic-10km"
 
-def find_latest_reference_time(fs, base, max_lookback_hours=240):
+def find_latest_reference_time(fs, base, max_lookback_days=10):
     now = datetime.now(timezone.utc)
-    hour = (now.hour // 6) * 6
-    candidate = now.replace(hour=hour, minute=0, second=0, microsecond=0)
-
-    for _ in range(max_lookback_hours // 6):
+    candidate = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    # if today's 00Z run hasn't been published yet, this will just get skipped
+    # on the first exists() check and fall back to the previous day
+    for _ in range(max_lookback_days):
         folder = candidate.strftime("%Y%m%dT%H00Z")
         path = f"{base}/{folder}"
         if fs.exists(path):
             return path, candidate
-        candidate -= timedelta(hours=6)
-
-    raise RuntimeError("No forecast folder found in lookback window")
+        candidate -= timedelta(days=1)
+    raise RuntimeError("No 00Z forecast folder found in lookback window")
 
 
 def load_ukmo_data():
